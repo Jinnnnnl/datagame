@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>基金投资挑战游戏</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #password-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+        }
+        
+        #password-box {
+            background-color: #2c3e50;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        #password-box h2 {
+            margin-top: 0;
+            color: #3498db;
+        }
+        
+        #password-input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        #password-submit {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        #password-submit:hover {
+            background-color: #2980b9;
+        }
+        
+        #password-error {
+            color: #e74c3c;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            #password-box {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 密码保护层 -->
+    <div id="password-overlay">
+        <div id="password-box">
+            <h2>基金投资挑战游戏</h2>
+            <p>请输入访问密码继续</p>
+            <input type="password" id="password-input" placeholder="请输入密码">
+            <p id="password-error">密码错误，请重试</p>
+            <button id="password-submit">确认</button>
+        </div>
+    </div>
+    <div class="container">
+        <!-- 加载数据界面 -->
+        <div id="loading-screen" style="text-align: center; padding: 50px 0;">
+            <h2>基金投资挑战游戏</h2>
+            <p>请点击下方按钮加载游戏数据</p>
+            <button id="load-data-btn" style="padding: 12px 24px; font-size: 16px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">加载游戏数据</button>
+            <p id="load-error" style="color: #e74c3c; margin-top: 20px; display: none;"></p>
+            
+            <!-- 加载指示器 -->
+            <div id="loading-indicator" style="display: none; flex-direction: column; align-items: center; margin-top: 30px;">
+                <div class="spinner" style="border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #3498db; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 10px;">正在加载数据，请稍候...</p>
+            </div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
+        </div>
+        
+        <!-- 游戏主界面 -->
+        <div id="game-container" style="display: none;">
+            <header>
+                <h1>基金投资挑战游戏</h1>
+                <div class="game-info">
+                    <span id="current-date">2021-01-01</span>
+                    <span id="game-phase">新手教学</span>
+                    <span id="remaining-changes">调整机会: 3次</span>
+                </div>
+            </header>
+
+            <main>
+            <!-- 游戏控制面板 -->
+            <div class="control-panel">
+                <div class="fund-selection">
+                    <h3>选择基金产品</h3>
+                    <select id="fund-selector">
+                        <option value="">请选择基金产品</option>
+                    </select>
+                    <button id="confirm-selection" disabled>确认选择</button>
+                    <button id="change-fund" style="display: none;">调整产品</button>
+                </div>
+                
+                <div class="time-control">
+                    <button id="next-week">下一周</button>
+                    <button id="auto-play">自动播放</button>
+                    <button id="pause-auto">暂停</button>
+                </div>
+            </div>
+
+            <!-- 图表展示区域 -->
+            <div class="chart-section">
+                <h3>净值走势图</h3>
+                <canvas id="performance-chart"></canvas>
+            </div>
+
+            <!-- 用户收益统计 -->
+            <div class="user-stats">
+                <h3>您的投资表现</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <label>累计收益率</label>
+                        <span id="total-return">0.00%</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>夏普比率</label>
+                        <span id="sharpe-ratio">0.00</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>最大回撤</label>
+                        <span id="max-drawdown">0.00%</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>波动率</label>
+                        <span id="volatility">0.00%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 排名表格 -->
+            <div class="ranking-section">
+                <h3>产品排名</h3>
+                <table id="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>排名</th>
+                            <th>产品名称</th>
+                            <th>当期收益</th>
+                            <th>累计收益</th>
+                            <th>夏普比率</th>
+                            <th>最大回撤</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- 年度总结弹窗 -->
+            <!-- 年度总结弹窗 -->
+            <div id="year-summary-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <h3>年度投资总结</h3>
+                    <div id="year-summary-content"></div>
+                    <button id="close-summary">继续游戏</button>
+                </div>
+            </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <!-- 密码验证脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查是否已经通过验证
+            if (!localStorage.getItem('gameAccessGranted')) {
+                document.getElementById('password-overlay').style.display = 'flex';
+            } else {
+                document.getElementById('password-overlay').style.display = 'none';
+                // 已验证，初始化游戏
+                initializeGameAfterAuth();
+            }
+            
+            // 密码验证
+            document.getElementById('password-submit').addEventListener('click', checkPassword);
+            document.getElementById('password-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkPassword();
+                }
+            });
+            
+            function checkPassword() {
+                const correctPassword = "250731";
+                const enteredPassword = document.getElementById('password-input').value;
+                
+                if (enteredPassword === correctPassword) {
+                    // 密码正确，存储访问权限并隐藏密码层
+                    localStorage.setItem('gameAccessGranted', 'true');
+                    document.getElementById('password-overlay').style.display = 'none';
+                    
+                    // 密码验证成功后初始化游戏
+                    initializeGameAfterAuth();
+                } else {
+                    // 密码错误，显示错误信息
+                    document.getElementById('password-error').style.display = 'block';
+                    document.getElementById('password-input').value = '';
+                    document.getElementById('password-input').focus();
+                    
+                    // 错误提示震动效果
+                    const passwordBox = document.getElementById('password-box');
+                    passwordBox.style.animation = 'shake 0.5s';
+                    setTimeout(() => {
+                        passwordBox.style.animation = '';
+                    }, 500);
+                }
+            }
+        });
+        
+        // 添加震动动画
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+            </style>
+        `);
+        
+        // 在密码验证成功后显示加载数据界面
+        function initializeGameAfterAuth() {
+            // 隐藏密码验证界面
+            document.getElementById('password-overlay').style.display = 'none';
+            
+            // 显示加载数据界面
+            document.getElementById('loading-screen').style.display = 'block';
+            document.getElementById('game-container').style.display = 'none';
+            
+            // 添加加载数据按钮事件
+            document.getElementById('load-data-btn').addEventListener('click', function() {
+                // 显示加载指示器
+                document.getElementById('loading-indicator').style.display = 'flex';
+                document.getElementById('load-data-btn').style.display = 'none';
+                
+                // 创建游戏实例并加载数据
+                setTimeout(() => {
+                    window.fundGame = new FundGame();
+                    window.fundGame.initializeGame();
+                }, 100);
+            });
+        }
+    </script>
+</body>
+</html>
